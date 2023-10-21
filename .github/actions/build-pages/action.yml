@@ -1,0 +1,19 @@
+name: Build pages
+
+description: Build and upload pages
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Pages
+      uses: actions/configure-pages@v2
+    - name: Clean install
+      run: npm ci
+      shell: bash
+    - name: Build
+      run: npm run build
+      shell: bash
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v1
+      with:
+        path: ./public

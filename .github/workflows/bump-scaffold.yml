@@ -1,0 +1,129 @@
+name: Bump scaffold
+
+# To run this workflow:
+#
+# - Creates an environment named "admin"
+# - Adds a secret named GH_TOKEN with the following permissions to this repository:
+#   - contents: write
+#   - pull-requests: write
+#   - workflows: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      exact-prod:
+        default: false
+        description: Install exact version for production dependencies
+        required: true
+        type: boolean
+
+jobs:
+  bump-scaffold:
+    environment:
+      name: admin
+      url: ${{ steps.summary.outputs.url }}
+    name: Bump scaffold
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate environment
+        run: |
+          if [ -z "${{ secrets.GH_TOKEN }}" ]
+          then
+            exit 1
+          fi
+
+      - name: Check out current
+        uses: actions/checkout@v3
+        with:
+          path: ./current
+          token: ${{ secrets.GH_TOKEN }}
+
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        id: get-template-repo
+        name: Get template repo
+        run: |
+          cd ./current/
+          echo repo=`gh repo view --json templateRepository --jq '.templateRepository.owner.login + "/" + .templateRepository.name'` >> $GITHUB_OUTPUT
+
+      - name: Check out template
+        uses: actions/checkout@v3
+        with:
+          path: ./template
+          repository: ${{ steps.get-template-repo.outputs.repo }}
+
+      - id: create-branch
+        name: Create branch
+        run: |
+          BRANCH_NAME=bot/bump-scaffold/${{ github.run_number }}
+
+          cd ./current/
+          git checkout -b $BRANCH_NAME
+          echo branch-name=$BRANCH_NAME >> $GITHUB_OUTPUT
+
+      - name: Copy scaffold files
+        run: rsync --exclude=.git/ --exclude=.github/workflows/set-up-scaffold.yml --exclude=package.json --exclude=public/ --exclude=README.* --exclude=src/ --include=src/tsconfig.json --recursive --verbose ./template/ ./current/
+
+      - name: Patch package.json/scripts
+        run: |
+          cat ./current/package.json | jq --argfile templateJSON ./template/package.json -r '.scripts = $templateJSON.scripts' > ./current/package.json.tmp
+          mv ./current/package.json.tmp ./current/package.json
+          cat ./current/package.json
+
+      - uses: ./current/.github/actions/install-default-deps
+        with:
+          exact-prod: ${{ inputs.exact-prod }}
+          path: ./current/
+
+      - id: get-changes
+        name: Get changes
+        run: |
+          cd ./current/
+
+          git status
+          git ls-files --deleted --exclude-from=./.gitignore --modified --others
+
+          if [[ `git ls-files --deleted --exclude-from=./.gitignore --modified --others | wc -l` -gt 0 ]]
+          then
+            echo has-changes=true >> $GITHUB_OUTPUT
+          fi
+
+      - id: commit-and-push
+        if: ${{ steps.get-changes.outputs.has-changes == 'true' }}
+        name: Commit and push
+        run: |
+          cd ./current
+
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git config user.name "@${{ github.actor }}"
+
+          git add .
+          git commit -a -m "Bump scaffold"
+          git push -u origin ${{ steps.create-branch.outputs.branch-name }}
+
+          URL=${{ github.server_url }}/${{ github.repository }}/compare/${{ steps.create-branch.outputs.branch-name }}?expand=1
+          echo url=$URL >> $GITHUB_OUTPUT
+
+          echo Branch created at [\`${{ steps.create-branch.outputs.branch-name }}\`]\($URL\). >> $GITHUB_STEP_SUMMARY
+
+      - env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        id: create-pull-request
+        if: ${{ steps.get-changes.outputs.has-changes == 'true' }}
+        name: Create pull request
+        run: |
+          cd ./current
+
+          URL=`gh pr create --fill --repo ${{ github.repository }} || true` >> $GITHUB_OUTPUT
+
+          if [[ ! -z "$URL" ]]
+          then
+            echo url=$URL >> $GITHUB_OUTPUT
+            echo Pull request created at $URL. >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - id: summary
+        if: ${{ steps.get-changes.outputs.has-changes == 'true' }}
+        name: Summary
+        run: echo url=${{ steps.create-pull-request.outputs.url || steps.commit-and-push.outputs.url }} >> $GITHUB_OUTPUT

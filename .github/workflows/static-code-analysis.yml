@@ -1,0 +1,27 @@
+name: Static code analysis
+
+on:
+  pull_request:
+    branches:
+      - main
+
+  # Runs on pushes targeting the default branch
+  push:
+    branches:
+      - main
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch: {}
+
+jobs:
+  static-code-analysis:
+    if: ${{ github.event_name != 'push' || (github.run_number > 1 && github.repository != 'compulim/template-react-esbuild') }}
+    name: Static code analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Clean install
+        run: npm ci
+      - name: Run static code analysis
+        run: npm run precommit

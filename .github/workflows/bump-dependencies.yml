@@ -1,0 +1,114 @@
+name: Bump dependencies
+
+# To run this workflow:
+#
+# - Creates an environment named "admin"
+# - Adds a secret named GH_TOKEN with the following permissions to this repository:
+#   - contents: write
+#   - pull-requests: write
+#   - workflows: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      exact-prod:
+        default: false
+        description: Install exact version for production dependencies
+        required: true
+        type: boolean
+
+jobs:
+  bump-dependencies:
+    environment:
+      name: admin
+      url: ${{ steps.summary.outputs.url }}
+    name: Bump dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate environment
+        run: |
+          if [ -z "${{ secrets.GH_TOKEN }}" ]
+          then
+            exit 1
+          fi
+
+      - name: Check out current
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+
+      - id: create-branch
+        name: Create branch
+        run: |
+          BRANCH_NAME=bot/bump-deps/${{ github.run_number }}
+
+          git checkout -b $BRANCH_NAME
+          echo branch-name=$BRANCH_NAME >> $GITHUB_OUTPUT
+
+      - uses: ./.github/actions/install-default-deps
+        with:
+          exact-prod: ${{ inputs.exact-prod }}
+          latest: true
+
+      - env:
+          BUMP_DEV_OPTIONS: ''
+          BUMP_PROD_OPTIONS: ${{ inputs.exact-prod && '--save-exact' || '' }}
+        run: npm run bump
+
+      - run: npm audit fix
+
+      - id: get-changes
+        name: Get changes
+        run: |
+          git status
+          git ls-files --deleted --exclude-from=./.gitignore --modified --others
+
+          if [[ `git ls-files --deleted --exclude-from=./.gitignore --modified --others | wc -l` -gt 0 ]]
+          then
+            echo has-changes=true >> $GITHUB_OUTPUT
+          fi
+
+      - if: ${{ steps.get-changes.outputs.has-changes == 'true' }}
+        name: Summarize changes
+        run: |
+          git show :package.json | jq '{ dependencies: .dependencies, devDependences: .devDependencies }' > /tmp/current.json
+          cat package.json | jq '{ dependencies: .dependencies, devDependences: .devDependencies }' > /tmp/next.json
+
+          echo \`\`\`diff >> $GITHUB_STEP_SUMMARY
+          diff -U 9999 /tmp/current.json /tmp/next.json >> $GITHUB_STEP_SUMMARY || true
+          echo \`\`\` >> $GITHUB_STEP_SUMMARY
+
+      - id: commit-and-push
+        if: ${{ steps.get-changes.outputs.has-changes == 'true' }}
+        name: Commit and push
+        run: |
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git config user.name "@${{ github.actor }}"
+
+          git commit -a -m "Bump dependencies"
+          git push -u origin ${{ steps.create-branch.outputs.branch-name }}
+
+          URL=${{ github.server_url }}/${{ github.repository }}/compare/${{ steps.create-branch.outputs.branch-name }}?expand=1
+          echo url=$URL >> $GITHUB_OUTPUT
+
+          echo Branch created at [\`${{ steps.create-branch.outputs.branch-name }}\`]\($URL\). >> $GITHUB_STEP_SUMMARY
+
+      - env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        id: create-pull-request
+        if: ${{ steps.get-changes.outputs.has-changes == 'true' }}
+        name: Create pull request
+        run: |
+          URL=`gh pr create --fill --repo ${{ github.repository }} || true` >> $GITHUB_OUTPUT
+
+          if [[ ! -z "$URL" ]]
+          then
+            echo url=$URL >> $GITHUB_OUTPUT
+            echo Pull request created at $URL. >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - id: summary
+        if: ${{ steps.get-changes.outputs.has-changes == 'true' }}
+        name: Summary
+        run: echo url=${{ steps.create-pull-request.outputs.url || steps.commit-and-push.outputs.url }} >> $GITHUB_OUTPUT

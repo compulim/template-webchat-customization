@@ -1,0 +1,17 @@
+# Simple workflow for validating pull request
+name: Pull request validation
+
+on:
+  # Runs on pushes targeting the default branch
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - uses: ./.github/actions/build-pages
