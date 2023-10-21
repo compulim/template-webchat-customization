@@ -1,0 +1,7 @@
+.activity-input {
+  border: 0;
+  box-sizing: border-box;
+  height: 100%;
+  resize: none;
+  width: 100%;
+}

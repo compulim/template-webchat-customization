@@ -1,13 +1,15 @@
-/* Uncomment this block for a web app with full screen height and width. */
-
-/* body, html {
+.app {
+  background-color: #F7F7F7;
+  box-sizing: border-box;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr;
   height: 100%;
+  padding: 10px;
 }
 
-body {
-  margin: 0;
+.app__pane {
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, .05);
+  overflow: hidden;
 }
-
-#root {
-  height: 100%;
-} */
