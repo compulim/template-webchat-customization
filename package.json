@@ -1,9 +1,9 @@
 {
-  "name": "react-esbuild-app",
+  "name": "webchat-customization-app",
   "version": "0.0.0-0",
   "private": true,
   "keywords": [
-    "template-react-esbuild"
+    "template-webchat-customization"
   ],
   "scripts": {
     "build": "esbuild --bundle --entry-names=[ext]/[name] --jsx=automatic --minify --outdir=./public/static/ --sourcemap app=./src/app/index.tsx",
@@ -15,22 +15,5 @@
     "precommit:eslint": "eslint ./src/",
     "precommit:typescript": "tsc --project ./src/tsconfig.json",
     "start": "npm run build -- --servedir=./public"
-  },
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
-  "devDependencies": {
-    "@tsconfig/strictest": "^2.0.2",
-    "@types/react": "^18.2.31",
-    "@types/react-dom": "^18.2.14",
-    "@typescript-eslint/eslint-plugin": "^6.8.0",
-    "@typescript-eslint/parser": "^6.8.0",
-    "concurrently": "^8.2.2",
-    "esbuild": "^0.19.5",
-    "eslint": "^8.52.0",
-    "eslint-plugin-prettier": "^5.0.1",
-    "eslint-plugin-react": "^7.33.2",
-    "typescript": "^5.2.2"
   }
 }
