@@ -15,7 +15,7 @@ on:
 
 jobs:
   static-code-analysis:
-    if: ${{ github.event_name != 'push' || (github.run_number > 1 && github.repository != 'compulim/template-react-esbuild') }}
+    if: ${{ github.event_name != 'push' || (github.run_number > 1 && !startsWith(github.repository, 'compulim/template-')) }}
     name: Static code analysis
     runs-on: ubuntu-latest
     steps:
