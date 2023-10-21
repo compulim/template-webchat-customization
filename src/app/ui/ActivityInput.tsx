@@ -1,17 +1,21 @@
 import './ActivityInput.css';
 
-import { ChangeEventHandler, memo, useCallback } from 'react';
+import { type ChangeEventHandler, memo, useCallback, useMemo } from 'react';
 import { useRefFrom } from 'use-ref-from';
 
 import onErrorResumeNext from '../util/onErrorResumeNext';
+import useStateWithDebounce from './hooks/useStateWithDebounce';
 
 type Props = {
   onChange: (value: string) => void;
   value: string;
 };
 
-export default memo(function ActivityInput({ onChange, value }: Props) {
+export default memo(function ActivityInput({ onChange, value: valueFromProps }: Props) {
   const onChangeRef = useRefFrom(onChange);
+  const [value, setValue, setValueNow] = useStateWithDebounce(valueFromProps, onChange);
+
+  useMemo(() => value === valueFromProps || setValueNow(valueFromProps), [valueFromProps, setValueNow]);
 
   const handleBlur = useCallback(
     () => onErrorResumeNext(() => onChangeRef.current(JSON.stringify(JSON.parse(value), null, 2))),
@@ -19,8 +23,8 @@ export default memo(function ActivityInput({ onChange, value }: Props) {
   );
 
   const handleChange = useCallback<ChangeEventHandler<HTMLTextAreaElement>>(
-    ({ currentTarget: { value } }) => onChangeRef.current?.(value),
-    [onChangeRef]
+    ({ currentTarget: { value } }) => setValue(value),
+    [setValue]
   );
 
   return (

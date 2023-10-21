@@ -20,7 +20,8 @@
     "botframework-webchat": "^4.15.9",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "use-ref-from": "^0.0.3"
+    "use-ref-from": "^0.0.3",
+    "use-state-with-ref": "^0.0.1"
   },
   "devDependencies": {
     "@tsconfig/strictest": "^2.0.2",
