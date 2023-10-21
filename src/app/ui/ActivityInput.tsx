@@ -15,11 +15,13 @@ export default memo(function ActivityInput({ onChange, value: valueFromProps }: 
   const onChangeRef = useRefFrom(onChange);
   const [value, setValue, setValueNow] = useStateWithDebounce(valueFromProps, onChange);
 
+  const valueRef = useRefFrom(value);
+
   useMemo(() => value === valueFromProps || setValueNow(valueFromProps), [valueFromProps, setValueNow]);
 
   const handleBlur = useCallback(
-    () => onErrorResumeNext(() => onChangeRef.current(JSON.stringify(JSON.parse(value), null, 2))),
-    [onChangeRef]
+    () => onErrorResumeNext(() => setValueNow(JSON.stringify(JSON.parse(valueRef.current), null, 2))),
+    [onChangeRef, setValueNow, valueRef]
   );
 
   const handleChange = useCallback<ChangeEventHandler<HTMLTextAreaElement>>(

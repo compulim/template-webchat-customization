@@ -6,7 +6,7 @@ type DebounceInit = {
   interval?: number;
 };
 
-const DEFAULT_DEBOUNCE_INTERVAL = 1000;
+const DEFAULT_DEBOUNCE_INTERVAL = 100;
 
 export default function useStateWithDebounce<T>(
   initialState: (() => T) | T,
