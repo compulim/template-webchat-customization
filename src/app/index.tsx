@@ -5,7 +5,7 @@ import { StrictMode } from 'react';
 
 import App from './ui/App';
 
-const rootElement = document.getElementById('root');
+const rootElement = document.getElementsByName('main')[0];
 
 rootElement &&
   createRoot(rootElement).render(
