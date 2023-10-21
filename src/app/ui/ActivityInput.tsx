@@ -1,6 +1,6 @@
 import './ActivityInput.css';
 
-import { type ChangeEventHandler, memo, useCallback, useMemo } from 'react';
+import { type ChangeEventHandler, memo, useCallback, useMemo, KeyboardEventHandler, useRef } from 'react';
 import { useRefFrom } from 'use-ref-from';
 
 import onErrorResumeNext from '../util/onErrorResumeNext';
@@ -12,21 +12,36 @@ type Props = {
 };
 
 export default memo(function ActivityInput({ onChange, value: valueFromProps }: Props) {
-  const onChangeRef = useRefFrom(onChange);
-  const [value, setValue, setValueNow] = useStateWithDebounce(valueFromProps, onChange);
-
+  const [value, setValue, setValueNow] = useStateWithDebounce(valueFromProps, onChange, { interval: 300 });
+  const elementRef = useRef<HTMLTextAreaElement>(null);
   const valueRef = useRefFrom(value);
 
   useMemo(() => value === valueFromProps || setValueNow(valueFromProps), [valueFromProps, setValueNow]);
 
-  const handleBlur = useCallback(
-    () => onErrorResumeNext(() => setValueNow(JSON.stringify(JSON.parse(valueRef.current), null, 2))),
-    [onChangeRef, setValueNow, valueRef]
-  );
-
   const handleChange = useCallback<ChangeEventHandler<HTMLTextAreaElement>>(
     ({ currentTarget: { value } }) => setValue(value),
     [setValue]
+  );
+
+  const handleKeyDown = useCallback<KeyboardEventHandler<HTMLTextAreaElement>>(
+    event => {
+      if (event.altKey && event.shiftKey && (event.key === 'f' || event.key === 'F')) {
+        onErrorResumeNext(() => {
+          const { current } = elementRef;
+          const prettyValue = JSON.stringify(JSON.parse(valueRef.current), null, 2);
+
+          if (current) {
+            const selectionStart = current?.selectionStart || Infinity;
+
+            current.value = prettyValue;
+            current.selectionEnd = current.selectionStart = selectionStart;
+          }
+
+          setValueNow(prettyValue);
+        });
+      }
+    },
+    [elementRef, setValueNow, valueRef]
   );
 
   return (
@@ -36,8 +51,9 @@ export default memo(function ActivityInput({ onChange, value: valueFromProps }: 
       autoCorrect="false"
       autoFocus={true}
       className="activity-input"
-      onBlur={handleBlur}
       onChange={handleChange}
+      onKeyDown={handleKeyDown}
+      ref={elementRef}
       spellCheck={false}
       value={value}
     />
