@@ -26,9 +26,10 @@ export default memo(function ActivityInput({ onChange, value: valueFromProps }: 
   const handleKeyDown = useCallback<KeyboardEventHandler<HTMLTextAreaElement>>(
     event => {
       if (event.altKey && event.shiftKey && (event.key === 'f' || event.key === 'F')) {
-        onErrorResumeNext(() => {
+        const prettyValue = onErrorResumeNext(() => JSON.stringify(JSON.parse(valueRef.current), null, 2));
+
+        if (prettyValue) {
           const { current } = elementRef;
-          const prettyValue = JSON.stringify(JSON.parse(valueRef.current), null, 2);
 
           if (current) {
             const selectionStart = current?.selectionStart || Infinity;
@@ -38,7 +39,7 @@ export default memo(function ActivityInput({ onChange, value: valueFromProps }: 
           }
 
           setValueNow(prettyValue);
-        });
+        }
       }
     },
     [elementRef, setValueNow, valueRef]
